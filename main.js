@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const scene = new THREE.Scene();
 
@@ -40,7 +41,7 @@ new RGBELoader().load("./texture/lakeside_sunrise.hdr", (texture) => {
 
 const shadowFloor = new THREE.Mesh(
   new THREE.PlaneGeometry(30, 30),
-  new THREE.ShadowMaterial({ opacity: 0.15 })
+  new THREE.ShadowMaterial({ opacity: 0.15 }),
 );
 shadowFloor.rotation.x = -Math.PI / 2;
 shadowFloor.position.y = -2.05;
@@ -64,10 +65,22 @@ scene.add(sunLight);
 
 scene.add(new THREE.AmbientLight(0xfff0e0, 0.3));
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-const material = new THREE.MeshStandardMaterial( { color: 'red' } );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
+// const geometry = new THREE.BoxGeometry(1, 1, 1);
+// const material = new THREE.MeshStandardMaterial({ color: "red" });
+// const cube = new THREE.Mesh(geometry, material);
+// scene.add(cube);
+
+const loader = new GLTFLoader();
+let boxGroup = null;
+let boxLid = null;
+let boxPhysicsWalls = [];
+
+function loadBox() {
+  return new Promise((resolve, reject) => {
+    loader.load("./models/Box2.glb", resolve, undefined, reject);
+  });
+}
+
 
 
 window.addEventListener("resize", () => {
@@ -80,6 +93,5 @@ function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
-
 
 animate();
