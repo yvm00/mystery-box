@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const scene = new THREE.Scene();
 
@@ -26,6 +27,8 @@ const orbit = new OrbitControls(camera, renderer.domElement);
 
 orbit.update();
 
+// light
+
 const pmrem = new THREE.PMREMGenerator(renderer);
 pmrem.compileEquirectangularShader();
 
@@ -40,35 +43,93 @@ new RGBELoader().load("./texture/lakeside_sunrise.hdr", (texture) => {
 
 const shadowFloor = new THREE.Mesh(
   new THREE.PlaneGeometry(30, 30),
-  new THREE.ShadowMaterial({ opacity: 0.15 })
+  new THREE.ShadowMaterial({ opacity: 0.15 }),
 );
 shadowFloor.rotation.x = -Math.PI / 2;
 shadowFloor.position.y = -2.05;
 shadowFloor.receiveShadow = true;
 scene.add(shadowFloor);
 
-const sunLight = new THREE.DirectionalLight(0xffb347, 1.5);
 sunLight.position.set(-1.5, 2.5, 1);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(2048, 2048);
+
+sunLight.shadow.mapSize.set(4096, 4096);
 sunLight.shadow.radius = 6;
 sunLight.shadow.blurSamples = 16;
 sunLight.shadow.bias = -0.001;
+
 sunLight.shadow.camera.near = 0.1;
-sunLight.shadow.camera.far = 30;
-sunLight.shadow.camera.left = -5;
-sunLight.shadow.camera.right = 5;
-sunLight.shadow.camera.top = 5;
-sunLight.shadow.camera.bottom = -5;
+sunLight.shadow.camera.far = 40;
+sunLight.shadow.camera.left = -15;
+sunLight.shadow.camera.right = 15;
+sunLight.shadow.camera.top = 15;
+sunLight.shadow.camera.bottom = -15;
+
 scene.add(sunLight);
+sunLight.shadow.camera.lookAt(0, -1, 0);
+
+sunLight.target.position.set(0, -1, 0);
+scene.add(sunLight.target);
 
 scene.add(new THREE.AmbientLight(0xfff0e0, 0.3));
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-const material = new THREE.MeshStandardMaterial( { color: 'red' } );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
+// box loading
+const loader = new GLTFLoader();
+let boxGroup = null;
+let boxLid = null;
+let boxContactsAdded = false;
 
+function loadBox() {
+  return new Promise((resolve, reject) => {
+    loader.load("./models/Box2.glb", resolve, undefined, reject);
+  });
+}
+
+async function init() {
+  const gltf = await loadBox();
+  boxGroup = gltf.scene;
+
+  boxGroup.traverse((c) => {
+    if (c.isMesh) c.castShadow = c.receiveShadow = true;
+  });
+
+  scene.add(boxGroup);
+  boxGroup.updateMatrixWorld(true);
+  boxGroup.scale.setScalar(1.4);
+
+  const bbox = new THREE.Box3().setFromObject(boxGroup);
+  const center = bbox.getCenter(new THREE.Vector3());
+
+  const names = ["Box_Flap_RL", "Box_Flap_LL", "Box_Flap_RS", "Box_Flap_LS"];
+  boxLid = Object.fromEntries(
+    names.map((n) => [n, boxGroup.getObjectByName(n)]),
+  );
+
+  boxGroup.position.x = -center.x;
+  boxGroup.position.z = -center.z;
+  boxGroup.position.y = -bbox.min.y;
+  boxGroup.updateMatrixWorld(true);
+
+  boxGroup.position.x = 15;
+  boxGroup.position.y = -1;
+
+  setTimeout(() => rollInBox(), 500);
+}
+
+function rollInBox() {
+  const tl = gsap.timeline({
+    onComplete: () => {
+      showText();
+    },
+  });
+
+  tl.to(boxGroup.position, { x: 0, duration: 2, ease: "power2.out" });
+  tl.to(
+    boxGroup.rotation,
+    { y: -Math.PI * 1.25, duration: 1.8, ease: "power2.out" },
+    "<",
+  );
+}
 
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
@@ -80,6 +141,5 @@ function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
-
 
 animate();
