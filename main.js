@@ -74,11 +74,10 @@ scene.add(sunLight.target);
 scene.add(new THREE.AmbientLight(0xfff0e0, 0.3));
 
 // box loading
-
 const loader = new GLTFLoader();
 let boxGroup = null;
 let boxLid = null;
-let boxPhysicsWalls = [];
+let boxContactsAdded = false;
 
 function loadBox() {
   return new Promise((resolve, reject) => {
@@ -100,7 +99,6 @@ async function init() {
 
   const bbox = new THREE.Box3().setFromObject(boxGroup);
   const center = bbox.getCenter(new THREE.Vector3());
-  const size = bbox.getSize(new THREE.Vector3());
 
   const names = ["Box_Flap_RL", "Box_Flap_LL", "Box_Flap_RS", "Box_Flap_LS"];
   boxLid = Object.fromEntries(
@@ -116,6 +114,21 @@ async function init() {
   boxGroup.position.y = -1;
 
   setTimeout(() => rollInBox(), 500);
+}
+
+function rollInBox() {
+  const tl = gsap.timeline({
+    onComplete: () => {
+      showText();
+    },
+  });
+
+  tl.to(boxGroup.position, { x: 0, duration: 2, ease: "power2.out" });
+  tl.to(
+    boxGroup.rotation,
+    { y: -Math.PI * 1.25, duration: 1.8, ease: "power2.out" },
+    "<",
+  );
 }
 
 window.addEventListener("resize", () => {
