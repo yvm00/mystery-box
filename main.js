@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import gsap from "gsap";
 
 const scene = new THREE.Scene();
 
@@ -50,6 +51,7 @@ shadowFloor.position.y = -2.05;
 shadowFloor.receiveShadow = true;
 scene.add(shadowFloor);
 
+const sunLight = new THREE.DirectionalLight(0xffb347, 1.5);
 sunLight.position.set(-1.5, 2.5, 1);
 sunLight.castShadow = true;
 
@@ -131,6 +133,44 @@ function rollInBox() {
   );
 }
 
+// text
+
+const textOverlay = document.createElement("div");
+textOverlay.id = "textOverlay";
+textOverlay.className = "text-overlay";
+document.body.appendChild(textOverlay);
+
+const hint = document.createElement("div");
+hint.className = "text-hint";
+hint.textContent = "click the box";
+document.body.appendChild(hint);
+
+const lines = ["What's in the", "box", "??"];
+const allLetters = [];
+
+function createTextLine(text, className = "") {
+  const lineContainer = document.createElement("div");
+  if (className) lineContainer.classList.add(className);
+  lineContainer.style.display = "block";
+
+  const lineLetters = text.split("").map((char) => {
+    const span = document.createElement("span");
+    span.textContent = char === " " ? "\u00A0" : char;
+    span.style.cssText = `
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(20px);
+    `;
+    lineContainer.appendChild(span);
+    return span;
+  });
+
+  textOverlay.appendChild(lineContainer);
+  allLetters.push(...lineLetters);
+}
+
+lines.forEach((el) => createTextLine(el, "text-main"))
+
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -143,3 +183,4 @@ function animate() {
 }
 
 animate();
+init()
