@@ -140,11 +140,6 @@ textOverlay.id = "textOverlay";
 textOverlay.className = "text-overlay";
 document.body.appendChild(textOverlay);
 
-const hint = document.createElement("div");
-hint.className = "text-hint";
-hint.textContent = "click the box";
-document.body.appendChild(hint);
-
 const lines = ["What's in the", "box", "??"];
 const allLetters = [];
 
@@ -169,7 +164,28 @@ function createTextLine(text, className = "") {
   allLetters.push(...lineLetters);
 }
 
-lines.forEach((el) => createTextLine(el, "text-main"))
+lines.forEach((el) => createTextLine(el, "text-main"));
+
+const hint = document.createElement("div");
+hint.className = "text-hint";
+hint.textContent = "click the box";
+document.body.appendChild(hint);
+
+const toggleHint = (show, text) => {
+  if (text) hint.textContent = text;
+  gsap.to(hint, { opacity: show ? 1 : 0, delay: 0.3, duration: 0.5});
+};
+
+function showText() {
+  gsap.to(allLetters, {
+    opacity: 1,
+    y: 0,
+    duration: 0.5,
+    ease: "power2.out",
+    stagger: 0.05,
+    onComplete: () => toggleHint(true)
+  });
+}
 
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
@@ -183,4 +199,4 @@ function animate() {
 }
 
 animate();
-init()
+init();
