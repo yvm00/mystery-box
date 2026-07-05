@@ -173,7 +173,7 @@ document.body.appendChild(hint);
 
 const toggleHint = (show, text) => {
   if (text) hint.textContent = text;
-  gsap.to(hint, { opacity: show ? 1 : 0, delay: 0.3, duration: 0.5});
+  gsap.to(hint, { opacity: show ? 1 : 0, delay: 0.3, duration: 0.5 });
 };
 
 function showText() {
@@ -183,9 +183,75 @@ function showText() {
     duration: 0.5,
     ease: "power2.out",
     stagger: 0.05,
-    onComplete: () => toggleHint(true)
+    onComplete: () => toggleHint(true),
   });
 }
+
+function getNDC(event) {
+  return new THREE.Vector2(
+    (event.clientX / innerWidth) * 2 - 1,
+    -(event.clientY / innerHeight) * 2 + 1,
+  );
+}
+
+function openBox() {
+  if (isOpened) return;
+  isOpened = true;
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      gsap.delayedCall(1, closeBox);
+    },
+  });
+
+  tl.to(boxGroup.rotation, { z: 0.06, duration: 0.07 })
+    .to(boxGroup.rotation, { z: -0.06, duration: 0.07 })
+    .to(boxGroup.rotation, { z: 0, duration: 0.07 });
+
+  animateLids(tl);
+}
+
+function animateLids(tl) {
+  const {
+    Box_Flap_RL: RL,
+    Box_Flap_LL: LL,
+    Box_Flap_RS: RS,
+    Box_Flap_LS: LS,
+  } = boxLid;
+  if (RL)
+    tl.to(
+      RL.rotation,
+      { z: Math.PI / 1.2, duration: 0.45, ease: "power2.out" },
+      "+=0.1",
+    );
+  if (LL)
+    tl.to(
+      LL.rotation,
+      { z: -Math.PI / 1.25, duration: 0.45, ease: "power2.out" },
+      "<0.08",
+    );
+  if (RS)
+    tl.to(
+      RS.rotation,
+      { x: -Math.PI / 1.15, duration: 0.4, ease: "power2.out" },
+      "<0.08",
+    );
+  if (LS)
+    tl.to(
+      LS.rotation,
+      { x: Math.PI / 1.25, duration: 0.4, ease: "power2.out" },
+      "<0.08",
+    );
+}
+
+window.addEventListener("click", (e) => {
+  if (!boxGroup || isOpened) return;
+
+  const mouse = getNDC(e);
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObject(boxGroup, true);
+  if (hits.length > 0) openBox();
+});
 
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
