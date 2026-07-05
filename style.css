@@ -1,4 +1,37 @@
 body {
   margin: 0;
-  background: radial-gradient(circle at center, #f5f0e9 0%, #dcd5cc 100%); ;
+  background: radial-gradient(circle at center, #f5f0e9 0%, #dcd5cc 100%);
+}
+
+.text-overlay {
+  position: fixed;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.text-main {
+  font-family: "Barrio", system-ui;
+  font-size: 50px;
+  font-weight: 500;
+  color: #3e3a37;
+  letter-spacing: 0.15em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.text-hint{
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #3E3A37;
+  pointer-events: none;
+  opacity: 0;
 }
