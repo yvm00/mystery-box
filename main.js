@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as CANNON from "cannon-es";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -189,6 +190,9 @@ function showText() {
 
 // box opening-closing animation
 
+let isAnimating = false;
+let globalBoxBody = null;
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let isOpened = false;
@@ -259,7 +263,7 @@ function openBox() {
     onComplete: () => {
       isAnimating = false;
       isOpened = true;
-      // spawnModels();
+      spawnModels();
       gsap.delayedCall(1, closeBox);
     },
   });
@@ -323,6 +327,142 @@ function closeBox() {
 
   getLidAnimations(tl, -1);
 }
+
+// models spawn
+
+// ============================================================
+// НАСТРОЙКА ФИЗИЧЕСКОГО МИРА
+// ============================================================
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+world.broadphase = new CANNON.SAPBroadphase(world); // более эффективный broadphase
+world.solver.iterations = 15;
+world.solver.tolerance = 0.001;
+
+// ============================================================
+// ФИЗИЧЕСКИЕ МАТЕРИАЛЫ
+// ============================================================
+const materials = {
+  ground: new CANNON.Material("ground"),
+  wall: new CANNON.Material("wall"),
+  object: new CANNON.Material("object"),
+  box: new CANNON.Material("box"),
+};
+
+// ============================================================
+// ПОЛ
+// ============================================================
+const groundBody = new CANNON.Body({
+  mass: 0,
+  material: materials.ground,
+  shape: new CANNON.Plane(),
+});
+groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+groundBody.position.y = -2;
+world.addBody(groundBody);
+
+// ============================================================
+// КОНТАКТНЫЕ НАСТРОЙКИ (трение + упругость)
+// ============================================================
+const contactConfigs = [
+  {
+    mat1: materials.object,
+    mat2: materials.ground,
+    friction: 0.2,
+    restitution: 0.2,
+  },
+  {
+    mat1: materials.object,
+    mat2: materials.wall,
+    friction: 0.5,
+    restitution: 0.1,
+  },
+  {
+    mat1: materials.object,
+    mat2: materials.object,
+    friction: 0.3,
+    restitution: 0.2,
+  },
+  {
+    mat1: materials.box,
+    mat2: materials.ground,
+    friction: 0.3,
+    restitution: 0.4,
+  },
+  {
+    mat1: materials.box,
+    mat2: materials.object,
+    friction: 0.3,
+    restitution: 0.3,
+  },
+];
+
+contactConfigs.forEach(({ mat1, mat2, friction, restitution }) => {
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(mat1, mat2, { friction, restitution }),
+  );
+});
+
+// walls
+
+const wallBodies = [];
+const WALL_DEPTH = 7;
+const WALL_THICKNESS = 2;
+const WALL_ANGLE_RAD = 0.75;
+const WALL_SIDE_OFFSET = 1.5;
+
+function createWall(x, y, z, w, h, d, rotY = 0) {
+  const body = new CANNON.Body({ mass: 0, material: materials.wall });
+  body.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)));
+  body.position.set(x, y, z);
+  if (rotY) {
+    body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotY);
+  }
+  world.addBody(body);
+  wallBodies.push(body);
+  return body;
+}
+
+function updateWalls() {
+  wallBodies.forEach((b) => world.removeBody(b));
+  wallBodies.length = 0;
+
+  const distance = Math.abs(camera.position.z);
+  const fovRad = (camera.fov * Math.PI) / 180;
+  const visibleHeight = 2 * Math.tan(fovRad / 2) * distance;
+  const visibleWidth = visibleHeight * camera.aspect;
+  const halfW = visibleWidth / 2 + WALL_SIDE_OFFSET;
+  const halfH = visibleHeight / 2;
+
+  const camY = camera.position.y;
+  const topY = camY + halfH;
+  const bottomY = camY - halfH;
+  const centerY = (bottomY + topY) / 2;
+
+  createWall(
+    -halfW,
+    centerY,
+    0,
+    WALL_THICKNESS,
+    visibleHeight,
+    halfW * 2,
+    WALL_ANGLE_RAD,
+  );
+  createWall(
+    halfW,
+    centerY,
+    0,
+    WALL_THICKNESS,
+    visibleHeight,
+    halfW * 2,
+    -WALL_ANGLE_RAD,
+  );
+  createWall(0, centerY, -WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
+  createWall(0, centerY, WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
+  createWall(0, topY + 0.5, 0, halfW * 2, WALL_THICKNESS, WALL_DEPTH * 2);
+}
+
+updateWalls();
 
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
