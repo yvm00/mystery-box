@@ -187,6 +187,12 @@ function showText() {
   });
 }
 
+// box opening-closing animation
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isOpened = false;
+
 function getNDC(event) {
   return new THREE.Vector2(
     (event.clientX / innerWidth) * 2 - 1,
@@ -194,12 +200,66 @@ function getNDC(event) {
   );
 }
 
+window.addEventListener("click", (e) => {
+  if (!boxGroup || isOpened || isAnimating) return;
+  const ndc = getNDC(e);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObject(boxGroup, true);
+  if (hits.length > 0) openBox();
+});
+
+function getLidAnimations(tl, direction) {
+  const lids = boxLid;
+  const configs = [
+    { name: "RL", axis: "z", angle: Math.PI / 1.2, duration: 0.45, delay: 0.1 },
+    {
+      name: "LL",
+      axis: "z",
+      angle: -Math.PI / 1.25,
+      duration: 0.45,
+      delay: 0.08,
+    },
+    {
+      name: "RS",
+      axis: "x",
+      angle: -Math.PI / 1.15,
+      duration: 0.4,
+      delay: 0.08,
+    },
+    {
+      name: "LS",
+      axis: "x",
+      angle: Math.PI / 1.25,
+      duration: 0.4,
+      delay: 0.08,
+    },
+  ];
+
+  configs.forEach((cfg, i) => {
+    const lid = lids[cfg.name];
+    if (!lid) return;
+    const target = direction === 1 ? cfg.angle : 0;
+    const start = direction === 1 ? 0 : cfg.angle;
+    const props = {};
+    props[cfg.axis] = target;
+    const offset = i === 0 ? `+=${cfg.delay}` : `<${cfg.delay}`;
+    tl.to(
+      lid.rotation,
+      { ...props, duration: cfg.duration, ease: "power2.out" },
+      offset,
+    );
+  });
+}
+
 function openBox() {
-  if (isOpened) return;
-  isOpened = true;
+  if (isOpened || isAnimating) return;
+  isAnimating = true;
 
   const tl = gsap.timeline({
     onComplete: () => {
+      isAnimating = false;
+      isOpened = true;
+      // spawnModels();
       gsap.delayedCall(1, closeBox);
     },
   });
@@ -208,50 +268,61 @@ function openBox() {
     .to(boxGroup.rotation, { z: -0.06, duration: 0.07 })
     .to(boxGroup.rotation, { z: 0, duration: 0.07 });
 
-  animateLids(tl);
+  getLidAnimations(tl, 1);
 }
 
-function animateLids(tl) {
-  const {
-    Box_Flap_RL: RL,
-    Box_Flap_LL: LL,
-    Box_Flap_RS: RS,
-    Box_Flap_LS: LS,
-  } = boxLid;
-  if (RL)
-    tl.to(
-      RL.rotation,
-      { z: Math.PI / 1.2, duration: 0.45, ease: "power2.out" },
-      "+=0.1",
-    );
-  if (LL)
-    tl.to(
-      LL.rotation,
-      { z: -Math.PI / 1.25, duration: 0.45, ease: "power2.out" },
-      "<0.08",
-    );
-  if (RS)
-    tl.to(
-      RS.rotation,
-      { x: -Math.PI / 1.15, duration: 0.4, ease: "power2.out" },
-      "<0.08",
-    );
-  if (LS)
-    tl.to(
-      LS.rotation,
-      { x: Math.PI / 1.25, duration: 0.4, ease: "power2.out" },
-      "<0.08",
-    );
+function closeBox() {
+  if (!isOpened || isAnimating) return;
+  isAnimating = true;
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      const boxShape = new CANNON.Box(
+        new CANNON.Vec3(3.3 / 2, 2.3 / 2, 4.3 / 2),
+      );
+      globalBoxBody = new CANNON.Body({
+        mass: 3.5,
+        shape: boxShape,
+        material: new CANNON.Material("boxMaterial"),
+        linearDamping: 0.01,
+        angularDamping: 0.05,
+      });
+      globalBoxBody.position.copy(boxGroup.position);
+      globalBoxBody.quaternion.copy(boxGroup.quaternion);
+
+      if (!boxContactsAdded) {
+        const boxFloorContact = new CANNON.ContactMaterial(
+          groundBody.material,
+          globalBoxBody.material,
+          { friction: 0.3, restitution: 0.4 },
+        );
+        world.addContactMaterial(boxFloorContact);
+
+        const boxToObjectsContact = new CANNON.ContactMaterial(
+          globalBoxBody.material,
+          objectMaterial,
+          { friction: 0.3, restitution: 0.3 },
+        );
+        world.addContactMaterial(boxToObjectsContact);
+        boxContactsAdded = true;
+      }
+
+      world.addBody(globalBoxBody);
+      physicsPairs.push({ mesh: boxGroup, body: globalBoxBody });
+
+      globalBoxBody.angularVelocity.set(
+        (Math.random() - 0.5) * 2,
+        0,
+        (Math.random() - 0.5) * 2,
+      );
+
+      isOpened = false;
+      isAnimating = false;
+    },
+  });
+
+  getLidAnimations(tl, -1);
 }
-
-window.addEventListener("click", (e) => {
-  if (!boxGroup || isOpened) return;
-
-  const mouse = getNDC(e);
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObject(boxGroup, true);
-  if (hits.length > 0) openBox();
-});
 
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
