@@ -329,7 +329,6 @@ function closeBox() {
         (Math.random() - 0.5) * 2,
       );
 
-      isOpened = false;
       isAnimating = false;
     },
   });
