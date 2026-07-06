@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as CANNON from "cannon-es";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -189,6 +190,9 @@ function showText() {
 
 // box opening-closing animation
 
+let isAnimating = false;
+let globalBoxBody = null;
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let isOpened = false;
@@ -211,29 +215,39 @@ window.addEventListener("click", (e) => {
 function getLidAnimations(tl, direction) {
   const lids = boxLid;
   const configs = [
-    { name: "RL", axis: "z", angle: Math.PI / 1.2, duration: 0.45, delay: 0.1 },
     {
-      name: "LL",
+      name: "Box_Flap_RL",
+      axis: "z",
+      angle: Math.PI / 1.2,
+      duration: 0.45,
+      delay: 0.1,
+    },
+    {
+      name: "Box_Flap_LL",
       axis: "z",
       angle: -Math.PI / 1.25,
       duration: 0.45,
       delay: 0.08,
     },
     {
-      name: "RS",
+      name: "Box_Flap_RS",
       axis: "x",
       angle: -Math.PI / 1.15,
       duration: 0.4,
       delay: 0.08,
     },
     {
-      name: "LS",
+      name: "Box_Flap_LS",
       axis: "x",
       angle: Math.PI / 1.25,
       duration: 0.4,
       delay: 0.08,
     },
   ];
+
+  if (direction === -1) {
+    configs.reverse();
+  }
 
   configs.forEach((cfg, i) => {
     const lid = lids[cfg.name];
@@ -254,13 +268,12 @@ function getLidAnimations(tl, direction) {
 function openBox() {
   if (isOpened || isAnimating) return;
   isAnimating = true;
-
   const tl = gsap.timeline({
     onComplete: () => {
       isAnimating = false;
       isOpened = true;
-      // spawnModels();
-      gsap.delayedCall(1, closeBox);
+      spawnModels();
+      setTimeout(() => closeBox(), 1000);
     },
   });
 
@@ -316,12 +329,263 @@ function closeBox() {
         (Math.random() - 0.5) * 2,
       );
 
-      isOpened = false;
       isAnimating = false;
     },
   });
 
   getLidAnimations(tl, -1);
+}
+
+// world settings
+
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.solver.iterations = 15;
+world.solver.tolerance = 0.001;
+
+const groundMaterial = new CANNON.Material("ground");
+const wallMaterial = new CANNON.Material("wall");
+const objectMaterial = new CANNON.Material("object");
+
+const groundBody = new CANNON.Body({
+  mass: 0,
+  material: groundMaterial,
+  shape: new CANNON.Plane(),
+});
+groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+groundBody.position.y = -2;
+world.addBody(groundBody);
+
+const contactConfigs = [
+  {
+    mat1: objectMaterial,
+    mat2: groundMaterial,
+    friction: 0.2,
+    restitution: 0.2,
+  },
+  {
+    mat1: objectMaterial,
+    mat2: wallMaterial,
+    friction: 0.5,
+    restitution: 0.1,
+  },
+  {
+    mat1: objectMaterial,
+    mat2: objectMaterial,
+    friction: 0.3,
+    restitution: 0.2,
+  },
+];
+
+contactConfigs.forEach(({ mat1, mat2, friction, restitution }) => {
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(mat1, mat2, { friction, restitution }),
+  );
+});
+
+// walls
+
+const wallBodies = [];
+const WALL_DEPTH = 7;
+const WALL_THICKNESS = 2;
+const WALL_ANGLE_RAD = 0.75;
+const WALL_SIDE_OFFSET = 1.5;
+
+function createWall(x, y, z, w, h, d, rotY = 0) {
+  const body = new CANNON.Body({ mass: 0, material: wallMaterial });
+  body.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)));
+  body.position.set(x, y, z);
+  if (rotY) {
+    body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotY);
+  }
+  world.addBody(body);
+  wallBodies.push(body);
+  return body;
+}
+
+function updateWalls() {
+  wallBodies.forEach((b) => world.removeBody(b));
+  wallBodies.length = 0;
+
+  const distance = Math.abs(camera.position.z);
+  const fovRad = (camera.fov * Math.PI) / 180;
+  const visibleHeight = 2 * Math.tan(fovRad / 2) * distance;
+  const visibleWidth = visibleHeight * camera.aspect;
+  const halfW = visibleWidth / 2 + WALL_SIDE_OFFSET;
+  const halfH = visibleHeight / 2;
+
+  const camY = camera.position.y;
+  const topY = camY + halfH;
+  const bottomY = camY - halfH;
+  const centerY = (bottomY + topY) / 2;
+
+  createWall(
+    -halfW,
+    centerY,
+    0,
+    WALL_THICKNESS,
+    visibleHeight,
+    halfW * 2,
+    WALL_ANGLE_RAD,
+  );
+  createWall(
+    halfW,
+    centerY,
+    0,
+    WALL_THICKNESS,
+    visibleHeight,
+    halfW * 2,
+    -WALL_ANGLE_RAD,
+  );
+  createWall(0, centerY, -WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
+  createWall(0, centerY, WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
+  createWall(0, topY + 0.5, 0, halfW * 2, WALL_THICKNESS, WALL_DEPTH * 2);
+}
+
+updateWalls();
+
+// models spawn
+
+const ITEMS_CONFIG = [
+  {
+    url: "./models/Daisy.glb",
+    shapeType: "box",
+    scale: 0.9,
+    mass: 1.0,
+    collisionScale: 0.8,
+  },
+  {
+    url: "./models/Bone.glb",
+    shapeType: "box",
+    scale: 0.9,
+    mass: 1.2,
+    collisionScale: 0.8,
+  },
+  {
+    url: "./models/Apple.glb",
+    shapeType: "sphere",
+    scale: 0.8,
+    mass: 0.8,
+    collisionScale: 0.7,
+  },
+  {
+    url: "./models/Cat.glb",
+    shapeType: "sphere",
+    scale: 0.9,
+    mass: 1.0,
+    collisionScale: 0.7,
+  },
+  {
+    url: "./models/Star2.glb",
+    shapeType: "box",
+    scale: 0.8,
+    mass: 0.9,
+    collisionScale: 0.8,
+  },
+];
+
+const physicsPairs = [];
+
+async function spawnModels() {
+  physicsPairs.forEach((pair) => {
+    scene.remove(pair.mesh);
+    world.removeBody(pair.body);
+  });
+  physicsPairs.length = 0;
+
+  const loadPromises = ITEMS_CONFIG.map((item) =>
+    loader
+      .loadAsync(item.url)
+      .then((gltf) => gltf.scene) 
+      .catch((err) => {
+        console.warn(`Fail to load ${item.url}:`, err);
+
+        const fallbackGroup = new THREE.Group();
+        const fallbackMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffaa88 }),
+        );
+        fallbackGroup.add(fallbackMesh);
+        return fallbackGroup; 
+      }),
+  );
+
+  const loadedMeshes = await Promise.all(loadPromises);
+
+  loadedMeshes.forEach((mesh, index) => {
+    const config = ITEMS_CONFIG[index];
+
+    mesh.traverse((c) => {
+      if (c.isMesh) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+      }
+    });
+
+    const scaleVar = 0.9 + Math.random() * 0.2;
+    const itemScale = config.scale !== undefined ? config.scale : 1.0;
+    const finalScale = itemScale * scaleVar;
+    mesh.scale.setScalar(finalScale);
+    scene.add(mesh);
+
+    const bbox = new THREE.Box3().setFromObject(mesh);
+    const size = bbox.getSize(new THREE.Vector3());
+    const collisionScale = config.collisionScale || 0.8;
+
+    let physicsShape;
+    if (config.shapeType === "sphere") {
+      const radius = (Math.max(size.x, size.y, size.z) / 2) * collisionScale;
+      physicsShape = new CANNON.Sphere(radius);
+    } else {
+      const half = new CANNON.Vec3(
+        (size.x / 2) * collisionScale,
+        (size.y / 2) * collisionScale,
+        (size.z / 2) * collisionScale,
+      );
+      physicsShape = new CANNON.Box(half);
+    }
+
+    const body = new CANNON.Body({
+      mass: config.mass || 1.0,
+      shape: physicsShape,
+      material: objectMaterial,
+      linearDamping: 0.01,
+      angularDamping: 0.05,
+    });
+
+    body.useCCD = true;
+    body.ccdMotionThreshold = 0.01;
+    body.ccdRadius =
+      (config.shapeType === "sphere"
+        ? (Math.max(size.x, size.y, size.z) / 2) * collisionScale
+        : (Math.max(size.x, size.y, size.z) / 2) * collisionScale) * 0.8;
+
+    const boxPos = boxGroup.position.clone();
+    const boxQuat = boxGroup.quaternion.clone();
+    const offsetLocal = new THREE.Vector3(
+      (index - 1) * 0.3,
+      (Math.random() - 0.5) * 0.2 + 0.1,
+      (Math.random() - 0.5) * 0.2,
+    );
+
+    const offsetX = (index - 1) * 0.3;
+      const offsetY = (Math.random() - 0.5) * 0.2 + 0.1;
+      body.position.set(offsetX, -0.3 + offsetY, (Math.random() - 0.5) * 0.2);
+    
+    const jumpForceY = 10 + Math.random() * 5;
+      const jumpForceX = (Math.random() - 0.5) * 8;
+      const jumpForceZ = (Math.random() - 0.5) * 8;
+      body.velocity.set(jumpForceX, jumpForceY, jumpForceZ);
+      body.angularVelocity.set(
+        (Math.random() - 0.5) * 5,
+        (Math.random() - 0.5) * 5,
+        (Math.random() - 0.5) * 5,
+      );
+
+    world.addBody(body);
+    physicsPairs.push({ mesh, body });
+  });
 }
 
 window.addEventListener("resize", () => {
@@ -330,8 +594,21 @@ window.addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
+const clock = new THREE.Clock();
+
 function animate() {
   requestAnimationFrame(animate);
+
+  const fixedTimeStep = 1 / 60;
+  const maxSubSteps = 8;
+
+  world.step(fixedTimeStep, clock.getDelta(), maxSubSteps);
+
+  for (const pair of physicsPairs) {
+    pair.mesh.position.copy(pair.body.position);
+    pair.mesh.quaternion.copy(pair.body.quaternion);
+  }
+
   renderer.render(scene, camera);
 }
 
