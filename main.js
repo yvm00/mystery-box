@@ -4,8 +4,11 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import gsap from "gsap";
+import GUI from "lil-gui";
 
 const scene = new THREE.Scene();
+const lightBgColor = new THREE.Color(0xfaf7f4);
+scene.background = lightBgColor;
 
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -13,68 +16,203 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100,
 );
-camera.position.set(0, 1.5, 10);
+camera.position.set(0, 4, 10);
 camera.lookAt(0, 0, 0);
 
+// const renderer = new THREE.WebGLRenderer({ antialias: true });
+// renderer.setSize(window.innerWidth, window.innerHeight);
+// renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// renderer.shadowMap.enabled = true;
+// renderer.shadowMap.type = THREE.VSMShadowMap;
+// renderer.outputColorSpace = THREE.SRGBColorSpace;
+// renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// renderer.toneMappingExposure = 0.7;
+// document.body.appendChild(renderer.domElement);
+
+// const orbit = new OrbitControls(camera, renderer.domElement);
+
+// orbit.update();
+
+// import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+// const pmremGenerator = new THREE.PMREMGenerator(renderer);
+// scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+// scene.environmentIntensity = 0.3
+
+// //floor
+
+// const width = 80;
+// const height = 80;
+// const segmentsX = 1;
+// const segmentsY = 120;
+// const backdropGeo = new THREE.PlaneGeometry(
+//   width,
+//   height,
+//   segmentsX,
+//   segmentsY,
+// );
+
+// const R = 8;
+
+// const pos = backdropGeo.attributes.position;
+// for (let i = 0; i < pos.count; i++) {
+//   const y = pos.getY(i);
+//   let newY = y;
+//   let newZ = 0;
+
+//   if (y <= -R) {
+//     newY = -R;
+//     newZ = -y;
+//   } else if (y < 0) {
+//     const s = -y / R;
+//     const phi = (s * Math.PI) / 2;
+//     newZ = R * (1 - Math.cos(phi));
+//     newY = -R * Math.sin(phi);
+//   }
+
+//   pos.setY(i, newY);
+//   pos.setZ(i, newZ);
+// }
+// backdropGeo.computeVertexNormals();
+
+// const backdropMat = new THREE.MeshStandardMaterial({
+//   color: bgColor,
+//   roughness: 1.0,
+//   metalness: 0,
+//   side: THREE.DoubleSide,
+// });
+// const backdrop = new THREE.Mesh(backdropGeo, backdropMat);
+// backdrop.position.set(0, 7.95, -15);
+// backdrop.receiveShadow = true;
+// scene.add(backdrop);
+
+// //light
+
+// // ====== KEY LIGHT — основной, тёплый, сверху-сбоку под углом ======
+// const keyLight = new THREE.DirectionalLight(0xff9d4d, 2.8); // тёплый желтоватый
+// keyLight.position.set(-10, 8, 7); // слева-сверху-спереди
+// keyLight.castShadow = true;
+// keyLight.shadow.mapSize.set(2048, 2048);
+// keyLight.shadow.radius = 40; // размытие теней — чем больше, тем мягче
+// keyLight.shadow.bias = -0.005;
+// keyLight.shadow.camera.near = 0.1;
+// keyLight.shadow.camera.far = 40;
+// keyLight.shadow.camera.left = -12;
+// keyLight.shadow.camera.right = 12;
+// keyLight.shadow.camera.top = 12;
+// keyLight.shadow.camera.bottom = -12;
+// scene.add(keyLight);
+
+// const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, 'red')
+// scene.add(keyLightHelper)
+
+// // ====== FILL LIGHT — холодный и слабый, подсвечивает тени с другой стороны ======
+// // Контраст теплый/холодный — то, что даёт "студийную" глубину, а не плоскую картинку
+// const fillLight = new THREE.DirectionalLight(0xe8edf5, 1.1); // холодный, приглушённый
+// fillLight.position.set(7, 4, 3); // справа, ниже key light
+// scene.add(fillLight);
+
+// const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, 'blue')
+// scene.add(fillLightHelper)
+
+// // ====== RIM LIGHT — тёплый контровой, сзади, обводит объект по контуру ======
+// const rimLight = new THREE.DirectionalLight(0xff7a26, 0.8);
+// rimLight.position.set(0, 5, -8); // сзади и сверху
+// scene.add(rimLight);
+
+// const rimLightHelper = new THREE.DirectionalLightHelper(rimLight, 5, 'orange')
+// scene.add(rimLightHelper)
+
+// // ====== AMBIENT — очень слабый, просто чтобы тени не были угольно-чёрными ======
+// const ambient = new THREE.AmbientLight(0xf6f3ee, 0.6);
+// scene.add(ambient);
+
+// const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
+// scene.add(light);
+
+// const lightHelper = new THREE.HemisphereLightHelper(light, 5, 'green')
+// scene.add(lightHelper)
+
+// Дополнительный "выравнивающий" свет — направлен почти вертикально вниз,
+// специально чтобы поднять яркость пола, который key light не докрывает
+// const topFill = new THREE.DirectionalLight(0xfff8ee, 0.6);
+// topFill.position.set(0, 15, -5);
+// scene.add(topFill);
+
+// const topFillHelper = new THREE.DirectionalLightHelper(topFill, 5, 'purple')
+// // scene.add(topFillHelper)
+
+// // И ещё один — почти строго с фронта, поднимает яркость стены
+// const frontFill = new THREE.DirectionalLight(0xfff8ee, 0.5);
+// frontFill.position.set(0, 5, 20);
+// scene.add(frontFill);
+
+// const frontFillHelper = new THREE.DirectionalLightHelper(frontFill, 5, 'black')
+// scene.add(frontFillHelper)
+
+// 1. Инициализация панели управления
+//
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.5;
+renderer.toneMappingExposure = 0.8;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 
 const orbit = new OrbitControls(camera, renderer.domElement);
-
+orbit.target.y = 2;
 orbit.update();
 
 // light
-
-const pmrem = new THREE.PMREMGenerator(renderer);
-pmrem.compileEquirectangularShader();
-
-new RGBELoader().load("./texture/lakeside_sunrise.hdr", (texture) => {
-  const envMap = pmrem.fromEquirectangular(texture).texture;
-  scene.environment = envMap;
-  scene.environmentRotation.y = -Math.PI * 0.4;
-  scene.environmentIntensity = 1;
-  texture.dispose();
-  pmrem.dispose();
-});
 
 const shadowFloor = new THREE.Mesh(
   new THREE.PlaneGeometry(30, 30),
   new THREE.ShadowMaterial({ opacity: 0.15 }),
 );
 shadowFloor.rotation.x = -Math.PI / 2;
-shadowFloor.position.y = -2.05;
+shadowFloor.position.y = 0;
 shadowFloor.receiveShadow = true;
 scene.add(shadowFloor);
 
-const sunLight = new THREE.DirectionalLight(0xffb347, 1.5);
-sunLight.position.set(-1.5, 2.5, 1);
-sunLight.castShadow = true;
+const keyLight = new THREE.DirectionalLight(0xffe2b8, 2.2);
+keyLight.position.set(-8, 10, 8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.radius = 12;
+keyLight.shadow.bias = -0.005;
+keyLight.shadow.camera.near = 0.1;
+keyLight.shadow.camera.far = 40;
+keyLight.shadow.camera.left = -12;
+keyLight.shadow.camera.right = 12;
+keyLight.shadow.camera.top = 12;
+keyLight.shadow.camera.bottom = -12;
+scene.add(keyLight);
 
-sunLight.shadow.mapSize.set(4096, 4096);
-sunLight.shadow.radius = 6;
-sunLight.shadow.blurSamples = 16;
-sunLight.shadow.bias = -0.001;
+const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, "red");
+scene.add(keyLightHelper);
 
-sunLight.shadow.camera.near = 0.1;
-sunLight.shadow.camera.far = 40;
-sunLight.shadow.camera.left = -15;
-sunLight.shadow.camera.right = 15;
-sunLight.shadow.camera.top = 15;
-sunLight.shadow.camera.bottom = -15;
+const fillLight = new THREE.DirectionalLight(0xe8edf5, 0.45);
+fillLight.position.set(7, 5, 6);
+scene.add(fillLight);
 
-scene.add(sunLight);
-sunLight.shadow.camera.lookAt(0, -1, 0);
+const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
+scene.add(fillLightHelper);
 
-sunLight.target.position.set(0, -1, 0);
-scene.add(sunLight.target);
+const ambient = new THREE.AmbientLight(0xf6f3ee, 0.8);
+scene.add(ambient);
 
-scene.add(new THREE.AmbientLight(0xfff0e0, 0.3));
+const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
+scene.add(light);
+
+const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
+scene.add(lightHelper);
+
+const hemisphere = new THREE.HemisphereLight(0xfff8ef, 0xe5d3bd, 0.35);
+scene.add(hemisphere);
+
+const boxLight = new THREE.PointLight(0xffb84d, 8, 3, 2);
+boxLight.castShadow = false;
 
 // box loading
 const loader = new GLTFLoader();
@@ -87,6 +225,42 @@ function loadBox() {
     loader.load("./models/Box2.glb", resolve, undefined, reject);
   });
 }
+
+function createGlowTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+
+  gradient.addColorStop(0, "rgba(255, 190, 70, 1)");
+  gradient.addColorStop(0.25, "rgba(255, 170, 50, 0.5)");
+  gradient.addColorStop(0.6, "rgba(255, 140, 30, 0.15)");
+  gradient.addColorStop(1, "rgba(255, 140, 30, 0)");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 128, 128);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+const glowTexture = createGlowTexture();
+
+const boxGlow = new THREE.Sprite(
+  new THREE.SpriteMaterial({
+    map: glowTexture,
+    color: 0xffb84d,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }),
+);
+
+boxGlow.scale.set(6, 6, 6);
+boxGlow.position.set(0, 0, 0);
 
 async function init() {
   const gltf = await loadBox();
@@ -114,7 +288,10 @@ async function init() {
   boxGroup.updateMatrixWorld(true);
 
   boxGroup.position.x = 15;
-  boxGroup.position.y = -1;
+  // boxGroup.position.y = -1;;
+  scene.add(boxGroup);
+  boxGroup.add(boxGlow);
+  boxGroup.add(boxLight);
 
   setTimeout(() => rollInBox(), 500);
 }
@@ -265,9 +442,22 @@ function getLidAnimations(tl, direction) {
   });
 }
 
+function changeBackground() {
+  const targetColor = new THREE.Color(0x211626);
+  gsap.to(lightBgColor, {
+    r: targetColor.r,
+    g: targetColor.g,
+    b: targetColor.b,
+    duration: 1.5,
+    ease: "power2.out",
+  });
+}
+
 function openBox() {
   if (isOpened || isAnimating) return;
   isAnimating = true;
+  changeBackground();
+
   const tl = gsap.timeline({
     onComplete: () => {
       isAnimating = false;
@@ -275,6 +465,11 @@ function openBox() {
       spawnModels();
       setTimeout(() => closeBox(), 1000);
     },
+  });
+
+  tl.to(boxGlow.material, {
+    opacity: 0.7,
+    duration: 1,
   });
 
   tl.to(boxGroup.rotation, { z: 0.06, duration: 0.07 })
@@ -354,7 +549,7 @@ const groundBody = new CANNON.Body({
   shape: new CANNON.Plane(),
 });
 groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-groundBody.position.y = -2;
+// groundBody.position.y = -2;
 world.addBody(groundBody);
 
 const contactConfigs = [
@@ -497,7 +692,7 @@ async function spawnModels() {
   const loadPromises = ITEMS_CONFIG.map((item) =>
     loader
       .loadAsync(item.url)
-      .then((gltf) => gltf.scene) 
+      .then((gltf) => gltf.scene)
       .catch((err) => {
         console.warn(`Fail to load ${item.url}:`, err);
 
@@ -507,7 +702,7 @@ async function spawnModels() {
           new THREE.MeshStandardMaterial({ color: 0xffaa88 }),
         );
         fallbackGroup.add(fallbackMesh);
-        return fallbackGroup; 
+        return fallbackGroup;
       }),
   );
 
@@ -570,18 +765,18 @@ async function spawnModels() {
     );
 
     const offsetX = (index - 1) * 0.3;
-      const offsetY = (Math.random() - 0.5) * 0.2 + 0.1;
-      body.position.set(offsetX, -0.3 + offsetY, (Math.random() - 0.5) * 0.2);
-    
+    const offsetY = (Math.random() - 0.5) * 0.2 + 0.1;
+    body.position.set(offsetX, -0.3 + offsetY, (Math.random() - 0.5) * 0.2);
+
     const jumpForceY = 10 + Math.random() * 5;
-      const jumpForceX = (Math.random() - 0.5) * 8;
-      const jumpForceZ = (Math.random() - 0.5) * 8;
-      body.velocity.set(jumpForceX, jumpForceY, jumpForceZ);
-      body.angularVelocity.set(
-        (Math.random() - 0.5) * 5,
-        (Math.random() - 0.5) * 5,
-        (Math.random() - 0.5) * 5,
-      );
+    const jumpForceX = (Math.random() - 0.5) * 8;
+    const jumpForceZ = (Math.random() - 0.5) * 8;
+    body.velocity.set(jumpForceX, jumpForceY, jumpForceZ);
+    body.angularVelocity.set(
+      (Math.random() - 0.5) * 5,
+      (Math.random() - 0.5) * 5,
+      (Math.random() - 0.5) * 5,
+    );
 
     world.addBody(body);
     physicsPairs.push({ mesh, body });
@@ -598,6 +793,11 @@ const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
+
+  // if (keyLightHelper) keyLightHelper.update();
+  // if (fillLightHelper) fillLightHelper.update();
+  // if (rimLightHelper) rimLightHelper.update();
+  // if (lightHelper) lightHelper.update();
 
   const fixedTimeStep = 1 / 60;
   const maxSubSteps = 8;
