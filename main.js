@@ -45,39 +45,39 @@ scene.add(shadowFloor);
 
 const keyLight = new THREE.DirectionalLight(0xffe2b8, 2.2);
 keyLight.position.set(-8, 10, 8);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.set(2048, 2048);
-keyLight.shadow.radius = 12;
-keyLight.shadow.bias = -0.005;
-keyLight.shadow.camera.near = 0.1;
-keyLight.shadow.camera.far = 40;
-keyLight.shadow.camera.left = -12;
-keyLight.shadow.camera.right = 12;
-keyLight.shadow.camera.top = 12;
-keyLight.shadow.camera.bottom = -12;
+keyLight.castShadow = false;
+// keyLight.shadow.mapSize.set(2048, 2048);
+// keyLight.shadow.radius = 12;
+// keyLight.shadow.bias = -0.005;
+// keyLight.shadow.camera.near = 0.1;
+// keyLight.shadow.camera.far = 40;
+// keyLight.shadow.camera.left = -12;
+// keyLight.shadow.camera.right = 12;
+// keyLight.shadow.camera.top = 12;
+// keyLight.shadow.camera.bottom = -12;
 scene.add(keyLight);
 
 const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, "red");
 scene.add(keyLightHelper);
 
-const fillLight = new THREE.DirectionalLight(0xe8edf5, 0.45);
-fillLight.position.set(7, 5, 6);
-scene.add(fillLight);
+// const fillLight = new THREE.DirectionalLight(0xe8edf5, 0.45);
+// fillLight.position.set(7, 5, 6);
+// scene.add(fillLight);
 
-const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
-scene.add(fillLightHelper);
+// const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
+// scene.add(fillLightHelper);
 
 const ambient = new THREE.AmbientLight(0xf6f3ee, 0.8);
 scene.add(ambient);
 
-const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
-scene.add(light);
+// const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
+// scene.add(light);
 
-const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
-scene.add(lightHelper);
+// const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
+// scene.add(lightHelper);
 
-const hemisphere = new THREE.HemisphereLight(0xfff8ef, 0xe5d3bd, 0.35);
-scene.add(hemisphere);
+// const hemisphere = new THREE.HemisphereLight(0xfff8ef, 0xe5d3bd, 0.35);
+// scene.add(hemisphere);
 
 const boxLight = new THREE.PointLight(0xffb84d, 8, 3, 2);
 boxLight.castShadow = false;
@@ -127,7 +127,7 @@ const boxGlow = new THREE.Sprite(
   }),
 );
 
-boxGlow.scale.set(6, 6, 6);
+boxGlow.scale.set(5, 5, 5);
 boxGlow.position.set(0, 0, 0);
 
 async function init() {
@@ -160,6 +160,8 @@ async function init() {
   scene.add(boxGroup);
   boxGroup.add(boxGlow);
   boxGroup.add(boxLight);
+
+  createBurstStars();
 
   setTimeout(() => rollInBox(), 500);
 }
@@ -321,28 +323,132 @@ function changeBackground() {
   });
 }
 
+// star
+
+let burstStars;
+
+function createBurstStars() {
+  const count = 180;
+
+  const positions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+
+    positions[i3] = 0;
+    positions[i3 + 1] = 0.8;
+    positions[i3 + 2] = 0;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+  const material = new THREE.PointsMaterial({
+    color: 0xffd27a,
+    size: 0.055,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  burstStars = new THREE.Points(geometry, material);
+
+  scene.add(burstStars);
+}
+
+function explodeStars() {
+  createBurstStars();
+
+  if (!burstStars) return;
+
+  const positions = burstStars.geometry.attributes.position.array;
+
+  const count = positions.length / 3;
+
+  const start = new THREE.Vector3();
+  boxGroup.getWorldPosition(start);
+
+  const target = new THREE.Vector3();
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+
+    positions[i3] = start.x;
+    positions[i3 + 1] = start.y + 0.6;
+    positions[i3 + 2] = start.z;
+
+    const ndcX = THREE.MathUtils.randFloat(-0.95, 0.95);
+    const ndcY = THREE.MathUtils.randFloat(-0.9, 0.9);
+
+    target.set(ndcX, ndcY, 0.5).unproject(camera);
+
+    gsap.to(positions, {
+      [i3]: target.x,
+      [i3 + 1]: target.y,
+      [i3 + 2]: target.z,
+
+      duration: 0.55 + Math.random() * 0.35,
+
+      delay: Math.random() * 0.3,
+
+      ease: "power3.out",
+
+      onUpdate: () => {
+        burstStars.geometry.attributes.position.needsUpdate = true;
+      },
+    });
+  }
+
+  burstStars.material.opacity = 1;
+}
+
 function openBox() {
   if (isOpened || isAnimating) return;
+
   isAnimating = true;
+
   changeBackground();
 
   const tl = gsap.timeline({
     onComplete: () => {
       isAnimating = false;
       isOpened = true;
+
+      explodeStars();
       spawnModels();
+
       setTimeout(() => closeBox(), 1000);
     },
   });
 
   tl.to(boxGlow.material, {
     opacity: 0.7,
-    duration: 1,
+    duration: 0.5,
   });
 
-  tl.to(boxGroup.rotation, { z: 0.06, duration: 0.07 })
-    .to(boxGroup.rotation, { z: -0.06, duration: 0.07 })
-    .to(boxGroup.rotation, { z: 0, duration: 0.07 });
+  tl.to(
+    boxLight,
+    {
+      intensity: 15,
+      duration: 0.4,
+    },
+    "<",
+  );
+
+  tl.to(boxGroup.rotation, {
+    z: 0.06,
+    duration: 0.07,
+  })
+    .to(boxGroup.rotation, {
+      z: -0.06,
+      duration: 0.07,
+    })
+    .to(boxGroup.rotation, {
+      z: 0,
+      duration: 0.07,
+    });
 
   getLidAnimations(tl, 1);
 }
