@@ -10,8 +10,6 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 const scene = new THREE.Scene();
-// const lightBgColor = new THREE.Color(0xfaf7f4);
-// scene.background = lightBgColor;
 
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -19,8 +17,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100,
 );
-camera.position.set(0, 4, 10);
-camera.lookAt(0, 0, 0);
+camera.position.set(0, 2, 10); // Опустили саму камеру на уровень коробки
+camera.rotation.set(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(innerWidth, innerHeight);
@@ -32,7 +30,7 @@ renderer.toneMappingExposure = 1;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 
 const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.target.y = 2;
+// orbit.target.y = 1;
 orbit.update();
 
 // light
@@ -87,6 +85,8 @@ boxLight.castShadow = false;
 
 // background
 
+const FLOOR_POS = -1.4;
+
 function createStarTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -120,16 +120,16 @@ function createStarTexture() {
 
 const starTexture = createStarTexture();
 
+const starMaterial = new THREE.SpriteMaterial({
+  map: starTexture,
+  transparent: true,
+  opacity: 0,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
 function createBackgroundStar() {
-  const material = new THREE.SpriteMaterial({
-    map: starTexture,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-
-  const star = new THREE.Sprite(material);
-
+  const star = new THREE.Sprite(starMaterial);
   return star;
 }
 
@@ -145,7 +145,7 @@ function createBackgroundStars() {
     const radius = Math.sqrt(i) * 1.7;
 
     const x = Math.cos(phi) * radius * 1.9;
-    const y = Math.sin(phi) * radius;
+    const y = Math.sin(phi) * radius + FLOOR_POS;
     const z = -4 - i * 0.1;
 
     star.position.set(x, y, z);
@@ -196,7 +196,7 @@ async function init() {
 
   boxGroup.position.x = -center.x;
   boxGroup.position.z = -center.z;
-  boxGroup.position.y = -bbox.min.y;
+  boxGroup.position.y = -bbox.min.y + FLOOR_POS;
   boxGroup.updateMatrixWorld(true);
 
   boxGroup.position.x = 15;
@@ -227,7 +227,7 @@ textOverlay.id = "textOverlay";
 textOverlay.className = "text-overlay";
 document.body.appendChild(textOverlay);
 
-const lines = ["What's in the", "box", "??"];
+const lines = ["What's in the", "box ?"];
 const allLetters = [];
 
 function createTextLine(text, className = "") {
@@ -264,13 +264,43 @@ const toggleHint = (show, text) => {
 };
 
 function showText() {
+  const cursor = document.createElement("span");
+  cursor.className = "typing-cursor";
+  cursor.innerText = "";
+  textOverlay.appendChild(cursor);
+
+  gsap.set(allLetters, { opacity: 0 });
+
   gsap.to(allLetters, {
     opacity: 1,
-    y: 0,
-    duration: 0.5,
-    ease: "power2.out",
-    stagger: 0.05,
-    onComplete: () => toggleHint(true),
+    duration: 0.03,
+    ease: "none",
+    stagger: {
+      each: 0.09,
+      from: "start",
+    },
+
+    onUpdate: function () {
+      const visibleLetters = allLetters.filter(
+        (letter) => gsap.getProperty(letter, "opacity") > 0,
+      );
+      if (visibleLetters.length > 0) {
+        const lastVisibleLetter = visibleLetters[visibleLetters.length - 1];
+
+        lastVisibleLetter.after(cursor);
+      }
+    },
+
+    onComplete: () => {
+      toggleHint(true);
+
+      gsap.to(cursor, {
+        opacity: 0,
+        duration: 0.5,
+        delay: 1.3,
+        onComplete: () => cursor.remove(),
+      });
+    },
   });
 }
 
@@ -380,11 +410,6 @@ function openBox() {
     },
   });
 
-  // tl.to(boxGlow.material, {
-  //   opacity: 0.35,
-  //   duration: 0.5,
-  // });
-
   tl.to(
     boxLight,
     {
@@ -393,6 +418,8 @@ function openBox() {
     },
     "<",
   );
+
+  tl.to(startMaterial, { opacity: 0.8, duration: 2, ease: "power1.out" }, "<");
 
   tl.to(boxGroup.rotation, {
     z: 0.06,
@@ -480,7 +507,6 @@ const groundBody = new CANNON.Body({
   shape: new CANNON.Plane(),
 });
 groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-// groundBody.position.y = -2;
 world.addBody(groundBody);
 
 const contactConfigs = [
@@ -518,6 +544,8 @@ const WALL_THICKNESS = 2;
 const WALL_ANGLE_RAD = 0.75;
 const WALL_SIDE_OFFSET = 1.5;
 
+// Глобальная переменная для управления высотой всего окружения
+
 function createWall(x, y, z, w, h, d, rotY = 0) {
   const body = new CANNON.Body({ mass: 0, material: wallMaterial });
   body.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)));
@@ -531,21 +559,27 @@ function createWall(x, y, z, w, h, d, rotY = 0) {
 }
 
 function updateWalls() {
+  // 1. Очищаем старые физические тела стен из мира Cannon.js
   wallBodies.forEach((b) => world.removeBody(b));
   wallBodies.length = 0;
 
+  // 2. Расчет размеров видимой области экрана на расстоянии камеры (без учета наклона)
   const distance = Math.abs(camera.position.z);
   const fovRad = (camera.fov * Math.PI) / 180;
   const visibleHeight = 2 * Math.tan(fovRad / 2) * distance;
   const visibleWidth = visibleHeight * camera.aspect;
+
+  // 3. Вычисление новых координат центров стен с учетом FLOOR_POS
+  // Так как камера находится на высоте camera.position.y (например, 2),
+  // а нам нужно центрировать физические стены по опущенной коробке:
+  const centerY = camera.position.y + FLOOR_POS;
   const halfW = visibleWidth / 2 + WALL_SIDE_OFFSET;
-  const halfH = visibleHeight / 2;
+  const topY = centerY + visibleHeight / 2;
 
-  const camY = camera.position.y;
-  const topY = camY + halfH;
-  const bottomY = camY - halfH;
-  const centerY = (bottomY + topY) / 2;
+  // 4. Синхронизируем положение плоскости пола Cannon.js
+  groundBody.position.y = FLOOR_POS;
 
+  // 5. Создаем левую и правую невидимые стены под углом к камере
   createWall(
     -halfW,
     centerY,
@@ -564,11 +598,14 @@ function updateWalls() {
     halfW * 2,
     -WALL_ANGLE_RAD,
   );
+
+  // 6. Создаем заднюю, переднюю и верхнюю (потолок) невидимые стены-ограничители
   createWall(0, centerY, -WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
   createWall(0, centerY, WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
   createWall(0, topY + 0.5, 0, halfW * 2, WALL_THICKNESS, WALL_DEPTH * 2);
 }
 
+// Вызываем функцию инициализации стен
 updateWalls();
 
 // models spawn
