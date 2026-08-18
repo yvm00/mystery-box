@@ -28,7 +28,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.9;
+renderer.toneMappingExposure = 1;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 
 const orbit = new OrbitControls(camera, renderer.domElement);
@@ -60,15 +60,15 @@ keyLight.shadow.camera.top = 12;
 keyLight.shadow.camera.bottom = -12;
 scene.add(keyLight);
 
-const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, "red");
-scene.add(keyLightHelper);
+// const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, "red");
+// scene.add(keyLightHelper);
 
 const fillLight = new THREE.DirectionalLight(0x8ce0ff, 0.45);
 fillLight.position.set(7, 5, 6);
 scene.add(fillLight);
 
-const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
-scene.add(fillLightHelper);
+// const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
+// scene.add(fillLightHelper);
 
 const ambient = new THREE.AmbientLight(0xf6f3ee, 0.5);
 scene.add(ambient);
@@ -76,8 +76,8 @@ scene.add(ambient);
 const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
 scene.add(light);
 
-const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
-scene.add(lightHelper);
+// const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
+// scene.add(lightHelper);
 
 const hemisphere = new THREE.HemisphereLight(0xfff8ef, 0xe5d3bd, 0.35);
 scene.add(hemisphere);
@@ -136,16 +136,16 @@ function createBackgroundStar() {
 let backgroundStars = [];
 function createBackgroundStars() {
   const group = new THREE.Group();
-  const count = 35;
+  const count = 40;
 
   for (let i = 0; i < count; i++) {
     const star = createBackgroundStar();
 
     const phi = i * 137.5 * (Math.PI / 180);
-    const radius = Math.sqrt(i) * 1.5;
+    const radius = Math.sqrt(i) * 1.7;
 
-    const x = Math.cos(phi) * radius * 1.8;
-    const y = Math.sin(phi) * radius + 3;
+    const x = Math.cos(phi) * radius * 1.9;
+    const y = Math.sin(phi) * radius;
     const z = -4 - i * 0.1;
 
     star.position.set(x, y, z);
@@ -169,46 +169,9 @@ let boxContactsAdded = false;
 
 function loadBox() {
   return new Promise((resolve, reject) => {
-    loader.load("./models/BoxСolor.glb", resolve, undefined, reject);
+    loader.load("./models/BoxColor.glb", resolve, undefined, reject);
   });
 }
-
-// function createGlowTexture() {
-//   const canvas = document.createElement("canvas");
-//   canvas.width = 128;
-//   canvas.height = 128;
-
-//   const ctx = canvas.getContext("2d");
-
-//   const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-
-//   gradient.addColorStop(0, "rgba(255, 190, 70, 1)");
-//   gradient.addColorStop(0.25, "rgba(255, 170, 50, 0.5)");
-//   gradient.addColorStop(0.6, "rgba(255, 140, 30, 0.15)");
-//   gradient.addColorStop(1, "rgba(255, 140, 30, 0)");
-
-//   ctx.fillStyle = gradient;
-//   ctx.fillRect(0, 0, 128, 128);
-
-//   return new THREE.CanvasTexture(canvas);
-// }
-
-// const glowTexture = createGlowTexture();
-
-// const boxGlow = new THREE.Sprite(
-//   new THREE.SpriteMaterial({
-//     map: glowTexture,
-//     color: 0xffb84d,
-//     transparent: true,
-//     opacity: 0,
-//     depthWrite: false,
-//     depthTest: true,
-//     blending: THREE.AdditiveBlending,
-//   }),
-// );
-
-// boxGlow.scale.set(4, 4, 4);
-// boxGlow.position.set(0, 0.3, -0.2);
 
 async function init() {
   const gltf = await loadBox();
@@ -221,7 +184,7 @@ async function init() {
 
   scene.add(boxGroup);
   boxGroup.updateMatrixWorld(true);
-  boxGroup.scale.setScalar(1.4);
+  boxGroup.scale.setScalar(1.6);
 
   const bbox = new THREE.Box3().setFromObject(boxGroup);
   const center = bbox.getCenter(new THREE.Vector3());
@@ -237,13 +200,8 @@ async function init() {
   boxGroup.updateMatrixWorld(true);
 
   boxGroup.position.x = 15;
-  // boxGroup.position.y = -1;;
   scene.add(boxGroup);
-  // boxGroup.add(boxGlow);
   boxGroup.add(boxLight);
-
-  createBurstStars();
-
   setTimeout(() => rollInBox(), 500);
 }
 
@@ -411,8 +369,6 @@ function openBox() {
 
   isAnimating = true;
 
-  // changeBackground();
-
   const tl = gsap.timeline({
     onComplete: () => {
       isAnimating = false;
@@ -424,10 +380,10 @@ function openBox() {
     },
   });
 
-  tl.to(boxGlow.material, {
-    opacity: 0.35,
-    duration: 0.5,
-  });
+  // tl.to(boxGlow.material, {
+  //   opacity: 0.35,
+  //   duration: 0.5,
+  // });
 
   tl.to(
     boxLight,
@@ -621,35 +577,35 @@ const ITEMS_CONFIG = [
   {
     url: "./models/DaisyColor.glb",
     shapeType: "box",
-    scale: 0.9,
+    scale: 1,
     mass: 1.0,
     collisionScale: 0.8,
   },
   {
     url: "./models/Bone.glb",
     shapeType: "box",
-    scale: 0.9,
+    scale: 1,
     mass: 1.2,
     collisionScale: 0.8,
   },
   {
     url: "./models/AppleColor.glb",
     shapeType: "sphere",
-    scale: 0.8,
+    scale: 1,
     mass: 0.8,
     collisionScale: 0.7,
   },
   {
     url: "./models/Cat.glb",
     shapeType: "sphere",
-    scale: 0.9,
+    scale: 1,
     mass: 1.0,
     collisionScale: 0.7,
   },
   {
     url: "./models/Star.glb",
     shapeType: "box",
-    scale: 0.8,
+    scale: 1,
     mass: 0.9,
     collisionScale: 0.8,
   },
@@ -709,7 +665,6 @@ async function spawnModels() {
       .sub(mesh.position)
       .divideScalar(finalScale);
 
-    // ✨ COLORED LIGHT
     const glowLight = new THREE.PointLight(
       config.glowColor || 0x8b5cf6,
       30,
@@ -785,8 +740,6 @@ window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-  composer.setSize(innerWidth, innerHeight);
-  bloomPass.setSize(innerWidth, innerHeight);
 });
 
 const clock = new THREE.Clock();

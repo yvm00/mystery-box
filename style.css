@@ -1,62 +1,40 @@
 body {
   margin: 0;
-  overflow: hidden;
+  overflow: hiden;
 
-   background:
+  background: #17151c;
+
+  background-image:
     radial-gradient(
-      circle at 50% 45%,
-      rgba(32, 38, 109, 0.35) 0%,
-      rgba(40, 69, 199, 0.15) 25%,
-      transparent 55%
+      ellipse 30vw 40vh at 50% 50%,
+      rgba(235, 143, 94, 0.7) 0%,
+      rgba(235, 143, 94, 0.2) 30%,
+      transparent 75%
     ),
     radial-gradient(
-      circle at 20% 70%,
-      rgba(44, 130, 255, 0.18) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at 80% 65%,
-      rgba(255, 80, 180, 0.15) 0%,
-      transparent 45%
-    ),
-    #000000;
-
- /* background: #000000;
-background: radial-gradient(circle,rgba(0, 0, 0, 1) 85%, #ce9aaf 100%); */
-
-/* background: #020024;
-background: radial-gradient(circle, rgba(2, 0, 36, 1) 0%, rgba(20, 72, 125, 1) 88%, rgba(121, 143, 199, 1) 100%); */
-
-/* background: #000000;
-background: radial-gradient(circle, rgba(0, 0, 0, 1) 75%, #8fa4d9 100%); */
-
-/* background: #ffffff;
-background: radial-gradient(circle,rgba(255, 255, 255, 1) 80%, rgba(245, 255, 217, 1) 100%); */
+      ellipse 45vw 65vh at 50% 50%,
+      rgba(131, 74, 138, 0.8) 0%,
+      rgba(131, 74, 138, 0.3) 50%,
+      transparent 100%
+    );
 }
 
-/* body {
-  margin: 0;
-  overflow: hidden;
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
 
-  background:
-    radial-gradient(
-      circle at 50% 45%,
-      rgba(32, 38, 109, 0.35) 0%,
-      rgba(40, 69, 199, 0.15) 25%,
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 20% 70%,
-      rgba(44, 130, 255, 0.18) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at 80% 65%,
-      rgba(255, 80, 180, 0.15) 0%,
-      transparent 45%
-    ),
-    #000000;
-} */
+  pointer-events: none;
+  z-index: 100;
+
+  opacity: 0.5;
+
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+  
+  mix-blend-mode: overlay;
+  background-size: 180px 180px;
+}
+
 .text-overlay {
   position: fixed;
   top: 30px;
@@ -76,7 +54,7 @@ background: radial-gradient(circle,rgba(255, 255, 255, 1) 80%, rgba(245, 255, 21
   text-transform: uppercase;
 }
 
-.text-hint{
+.text-hint {
   position: fixed;
   bottom: 32px;
   left: 50%;
@@ -85,7 +63,7 @@ background: radial-gradient(circle,rgba(255, 255, 255, 1) 80%, rgba(245, 255, 21
   font-size: 12px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #3E3A37;
+  color: #3e3a37;
   pointer-events: none;
   opacity: 0;
 }
