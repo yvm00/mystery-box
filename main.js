@@ -231,36 +231,32 @@ function rollInBox() {
 
 // text
 
-const textOverlay = document.createElement("div");
-textOverlay.id = "textOverlay";
-textOverlay.className = "text-overlay";
-document.body.appendChild(textOverlay);
-
-const lines = ["What's in the", "box ?"];
+const textOverlay = document.querySelector(".text-title");
+const lines = document.querySelectorAll(".title-line");
 const allLetters = [];
 
-function createTextLine(text, className = "") {
-  const lineContainer = document.createElement("div");
-  if (className) lineContainer.classList.add(className);
-  lineContainer.style.display = "block";
+lines.forEach((line) => {
+  const text = line.textContent;
+  line.textContent = "";
 
-  const lineLetters = text.split("").map((char) => {
+  const letters = [...text].map((char) => {
     const span = document.createElement("span");
+
     span.textContent = char === " " ? "\u00A0" : char;
+
     span.style.cssText = `
       display: inline-block;
       opacity: 0;
       transform: translateY(20px);
     `;
-    lineContainer.appendChild(span);
+
+    line.appendChild(span);
+
     return span;
   });
 
-  textOverlay.appendChild(lineContainer);
-  allLetters.push(...lineLetters);
-}
-
-lines.forEach((el) => createTextLine(el, "text-main"));
+  allLetters.push(...letters);
+});
 
 const hint = document.querySelector(".text-hint");
 
@@ -401,7 +397,7 @@ function openBox() {
       isOpened = true;
 
       await spawnModels();
-      
+
       gsap.to(answer, {
         opacity: 0.7,
         duration: 0.8,
