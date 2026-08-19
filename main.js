@@ -152,7 +152,7 @@ function createBackgroundStars() {
 
     const scale = i % 2 === 0 ? 0.7 : 1.5;
     star.scale.setScalar(scale);
-    star.material.opacity = i % 2 === 0 ? 0.8 : 0.5;
+    // star.material.opacity = i % 2 === 0 ? 0.8 : 0.5;
 
     group.add(star);
     backgroundStars.push(star);
@@ -381,19 +381,6 @@ function getLidAnimations(tl, direction) {
   });
 }
 
-function changeBackground() {
-  const targetColor = new THREE.Color(0x1e1d24);
-  gsap.to(lightBgColor, {
-    r: targetColor.r,
-    g: targetColor.g,
-    b: targetColor.b,
-    duration: 1.5,
-    ease: "power2.out",
-  });
-}
-
-// star
-
 function openBox() {
   if (isOpened || isAnimating) return;
 
@@ -410,6 +397,8 @@ function openBox() {
     },
   });
 
+  tl.to(starMaterial, { opacity: 0.65, duration: 3, ease: "power1.out" }, "<");
+
   tl.to(
     boxLight,
     {
@@ -418,8 +407,6 @@ function openBox() {
     },
     "<",
   );
-
-  tl.to(startMaterial, { opacity: 0.8, duration: 2, ease: "power1.out" }, "<");
 
   tl.to(boxGroup.rotation, {
     z: 0.06,
@@ -433,6 +420,8 @@ function openBox() {
       z: 0,
       duration: 0.07,
     });
+
+  // tl.to(starMaterial, { opacity: 0.65, duration: 3, ease: "power1.out" }, "<");
 
   getLidAnimations(tl, 1);
 }
