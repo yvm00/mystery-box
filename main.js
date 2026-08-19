@@ -17,7 +17,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100,
 );
-camera.position.set(0, 2, 10); // Опустили саму камеру на уровень коробки
+camera.position.set(0, 1.5, 10);
 camera.rotation.set(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -30,7 +30,6 @@ renderer.toneMappingExposure = 1;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 
 const orbit = new OrbitControls(camera, renderer.domElement);
-// orbit.target.y = 1;
 orbit.update();
 
 // light
@@ -58,24 +57,15 @@ keyLight.shadow.camera.top = 12;
 keyLight.shadow.camera.bottom = -12;
 scene.add(keyLight);
 
-// const keyLightHelper = new THREE.DirectionalLightHelper(keyLight, 5, "red");
-// scene.add(keyLightHelper);
-
 const fillLight = new THREE.DirectionalLight(0x8ce0ff, 0.45);
 fillLight.position.set(7, 5, 6);
 scene.add(fillLight);
-
-// const fillLightHelper = new THREE.DirectionalLightHelper(fillLight, 5, "blue");
-// scene.add(fillLightHelper);
 
 const ambient = new THREE.AmbientLight(0xf6f3ee, 0.5);
 scene.add(ambient);
 
 const light = new THREE.HemisphereLight(0xf6f3ee, 0xe8c98f, 0.7);
 scene.add(light);
-
-// const lightHelper = new THREE.HemisphereLightHelper(light, 5, "green");
-// scene.add(lightHelper);
 
 const hemisphere = new THREE.HemisphereLight(0xfff8ef, 0xe5d3bd, 0.35);
 scene.add(hemisphere);
@@ -85,7 +75,7 @@ boxLight.castShadow = false;
 
 // background
 
-const FLOOR_POS = -1.4;
+const FLOOR_POS = -1.6;
 
 function createStarTexture() {
   const canvas = document.createElement("canvas");
@@ -120,17 +110,36 @@ function createStarTexture() {
 
 const starTexture = createStarTexture();
 
-const starMaterial = new THREE.SpriteMaterial({
-  map: starTexture,
-  transparent: true,
-  opacity: 0,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
-});
-
 function createBackgroundStar() {
-  const star = new THREE.Sprite(starMaterial);
-  return star;
+  const material = new THREE.SpriteMaterial({
+    map: starTexture,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  return new THREE.Sprite(material);
+}
+
+function showBackgroundStars() {
+  backgroundStars.forEach((star, i) => {
+    gsap.to(star.material, {
+      opacity: i % 2 === 0 ? 0.7 : 0.45,
+      duration: 1.2,
+      delay: i * 0.025,
+      ease: "power2.out",
+    });
+
+    gsap.to(star.position, {
+      y: star.position.y + 0.15,
+      duration: 2 + Math.random(),
+      delay: i * 0.025,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+    });
+  });
 }
 
 let backgroundStars = [];
@@ -142,17 +151,16 @@ function createBackgroundStars() {
     const star = createBackgroundStar();
 
     const phi = i * 137.5 * (Math.PI / 180);
-    const radius = Math.sqrt(i) * 1.7;
+    const radius = Math.sqrt(i) * 2;
 
-    const x = Math.cos(phi) * radius * 1.9;
+    const x = Math.cos(phi) * radius * 2;
     const y = Math.sin(phi) * radius + FLOOR_POS;
-    const z = -4 - i * 0.1;
+    const z = -7 - i * 0.1;
 
     star.position.set(x, y, z);
 
-    const scale = i % 2 === 0 ? 0.7 : 1.5;
+    const scale = i % 2 === 0 ? 1 : 2;
     star.scale.setScalar(scale);
-    // star.material.opacity = i % 2 === 0 ? 0.8 : 0.5;
 
     group.add(star);
     backgroundStars.push(star);
@@ -162,6 +170,7 @@ function createBackgroundStars() {
 }
 
 // box loading
+
 const loader = new GLTFLoader();
 let boxGroup = null;
 let boxLid = null;
@@ -253,15 +262,14 @@ function createTextLine(text, className = "") {
 
 lines.forEach((el) => createTextLine(el, "text-main"));
 
-const hint = document.createElement("div");
-hint.className = "text-hint";
-hint.textContent = "click the box";
-document.body.appendChild(hint);
+const hint = document.querySelector(".text-hint");
 
 const toggleHint = (show, text) => {
   if (text) hint.textContent = text;
   gsap.to(hint, { opacity: show ? 1 : 0, delay: 0.3, duration: 0.5 });
 };
+
+const answer = document.querySelector(".text-answer");
 
 function showText() {
   const cursor = document.createElement("span");
@@ -385,19 +393,27 @@ function openBox() {
   if (isOpened || isAnimating) return;
 
   isAnimating = true;
+  showBackgroundStars();
 
   const tl = gsap.timeline({
-    onComplete: () => {
+    onComplete: async () => {
       isAnimating = false;
       isOpened = true;
 
-      spawnModels();
+      await spawnModels();
+      
+      gsap.to(answer, {
+        opacity: 0.7,
+        duration: 0.8,
+        delay: 0.3,
+        ease: "power2.out",
+      });
+
+      toggleHint(true, "trow them around");
 
       setTimeout(() => closeBox(), 1000);
     },
   });
-
-  tl.to(starMaterial, { opacity: 0.65, duration: 3, ease: "power1.out" }, "<");
 
   tl.to(
     boxLight,
@@ -420,8 +436,6 @@ function openBox() {
       z: 0,
       duration: 0.07,
     });
-
-  // tl.to(starMaterial, { opacity: 0.65, duration: 3, ease: "power1.out" }, "<");
 
   getLidAnimations(tl, 1);
 }
@@ -533,8 +547,6 @@ const WALL_THICKNESS = 2;
 const WALL_ANGLE_RAD = 0.75;
 const WALL_SIDE_OFFSET = 1.5;
 
-// Глобальная переменная для управления высотой всего окружения
-
 function createWall(x, y, z, w, h, d, rotY = 0) {
   const body = new CANNON.Body({ mass: 0, material: wallMaterial });
   body.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)));
@@ -548,27 +560,20 @@ function createWall(x, y, z, w, h, d, rotY = 0) {
 }
 
 function updateWalls() {
-  // 1. Очищаем старые физические тела стен из мира Cannon.js
   wallBodies.forEach((b) => world.removeBody(b));
   wallBodies.length = 0;
 
-  // 2. Расчет размеров видимой области экрана на расстоянии камеры (без учета наклона)
   const distance = Math.abs(camera.position.z);
   const fovRad = (camera.fov * Math.PI) / 180;
   const visibleHeight = 2 * Math.tan(fovRad / 2) * distance;
   const visibleWidth = visibleHeight * camera.aspect;
 
-  // 3. Вычисление новых координат центров стен с учетом FLOOR_POS
-  // Так как камера находится на высоте camera.position.y (например, 2),
-  // а нам нужно центрировать физические стены по опущенной коробке:
   const centerY = camera.position.y + FLOOR_POS;
   const halfW = visibleWidth / 2 + WALL_SIDE_OFFSET;
   const topY = centerY + visibleHeight / 2;
 
-  // 4. Синхронизируем положение плоскости пола Cannon.js
   groundBody.position.y = FLOOR_POS;
 
-  // 5. Создаем левую и правую невидимые стены под углом к камере
   createWall(
     -halfW,
     centerY,
@@ -588,13 +593,11 @@ function updateWalls() {
     -WALL_ANGLE_RAD,
   );
 
-  // 6. Создаем заднюю, переднюю и верхнюю (потолок) невидимые стены-ограничители
   createWall(0, centerY, -WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
   createWall(0, centerY, WALL_DEPTH, halfW * 3, visibleHeight, WALL_THICKNESS);
   createWall(0, topY + 0.5, 0, halfW * 2, WALL_THICKNESS, WALL_DEPTH * 2);
 }
 
-// Вызываем функцию инициализации стен
 updateWalls();
 
 // models spawn
@@ -693,13 +696,12 @@ async function spawnModels() {
 
     const glowLight = new THREE.PointLight(
       config.glowColor || 0x8b5cf6,
-      30,
-      10,
+      8,
+      5,
       1,
     );
 
     glowLight.position.copy(localCenter);
-    // glowLight.position.y += maxDimension * 0.3;
 
     mesh.add(glowLight);
 
@@ -747,9 +749,9 @@ async function spawnModels() {
     const offsetY = (Math.random() - 0.5) * 0.2 + 0.1;
     body.position.set(offsetX, -0.3 + offsetY, (Math.random() - 0.5) * 0.2);
 
-    const jumpForceY = 10 + Math.random() * 5;
-    const jumpForceX = (Math.random() - 0.5) * 8;
-    const jumpForceZ = (Math.random() - 0.5) * 8;
+    const jumpForceY = 6 + Math.random() * 3;
+    const jumpForceX = (Math.random() - 0.5) * 5;
+    const jumpForceZ = (Math.random() - 0.5) * 5;
     body.velocity.set(jumpForceX, jumpForceY, jumpForceZ);
     body.angularVelocity.set(
       (Math.random() - 0.5) * 5,
@@ -772,11 +774,6 @@ const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
-
-  // if (keyLightHelper) keyLightHelper.update();
-  // if (fillLightHelper) fillLightHelper.update();
-  // if (rimLightHelper) rimLightHelper.update();
-  // if (lightHelper) lightHelper.update();
 
   const fixedTimeStep = 1 / 60;
   const maxSubSteps = 8;
