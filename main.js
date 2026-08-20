@@ -27,8 +27,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 
-const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.update();
+// const orbit = new OrbitControls(camera, renderer.domElement);
+// orbit.update();
 
 // light
 
@@ -636,6 +636,40 @@ const ITEMS_CONFIG = [
 
 const physicsPairs = [];
 
+let isDragging = false;
+let draggedBody = null;
+let dragConstraint = null;
+
+const pivot = new CANNON.Body({
+  mass: 0,
+  type: CANNON.Body.KINEMATIC,
+});
+
+pivot.collisionFilterGroup = 0;
+pivot.collisionFilterMask = 0;
+
+world.addBody(pivot);
+
+const dragPlane = new THREE.Plane();
+const dragPoint = new THREE.Vector3();
+
+const MAX_THROW_SPEED = 7;
+const MAX_DRAG_SPEED = 10;
+
+function findBodyByMesh(mesh) {
+  for (const pair of physicsPairs) {
+    let found = false;
+
+    pair.mesh.traverse((child) => {
+      if (child === mesh) found = true;
+    });
+
+    if (found) return pair.body;
+  }
+
+  return null;
+}
+
 async function spawnModels() {
   physicsPairs.forEach((pair) => {
     scene.remove(pair.mesh);
@@ -758,6 +792,126 @@ async function spawnModels() {
   });
 }
 
+window.addEventListener("pointerdown", (e) => {
+  if (!isOpened || isAnimating) return;
+
+  mouse.set(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1,
+  );
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const meshes = [];
+
+  physicsPairs.forEach((pair) => {
+    pair.mesh.traverse((child) => {
+      if (child.isMesh) {
+        meshes.push(child);
+      }
+    });
+  });
+
+  const hits = raycaster.intersectObjects(meshes, false);
+
+  if (!hits.length) return;
+
+  const hit = hits[0];
+
+  draggedBody = findBodyByMesh(hit.object);
+
+  if (!draggedBody) return;
+
+  isDragging = true;
+
+  draggedBody.velocity.set(0, 0, 0);
+  draggedBody.angularVelocity.set(0, 0, 0);
+
+  const cameraDirection = new THREE.Vector3();
+  camera.getWorldDirection(cameraDirection);
+
+  dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, hit.point);
+
+  dragPoint.copy(hit.point);
+
+  const localPivot = new CANNON.Vec3();
+
+  draggedBody.pointToLocalFrame(
+    new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z),
+    localPivot,
+  );
+
+  pivot.position.set(hit.point.x, hit.point.y, hit.point.z);
+
+  dragConstraint = new CANNON.PointToPointConstraint(
+    draggedBody,
+    localPivot,
+    pivot,
+    new CANNON.Vec3(0, 0, 0),
+  );
+
+  world.addConstraint(dragConstraint);
+
+  renderer.domElement.setPointerCapture?.(e.pointerId);
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (!isDragging || !draggedBody) return;
+
+  mouse.set(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1,
+  );
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const hit = raycaster.ray.intersectPlane(dragPlane, dragPoint);
+
+  if (!hit) return;
+
+  pivot.position.set(dragPoint.x, dragPoint.y, dragPoint.z);
+
+  const vel = draggedBody.velocity;
+
+  const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+
+  if (speed > MAX_DRAG_SPEED) {
+    const scale = MAX_DRAG_SPEED / speed;
+
+    vel.x *= scale;
+    vel.y *= scale;
+    vel.z *= scale;
+  }
+});
+
+window.addEventListener("pointerup", (e) => {
+  if (!isDragging) return;
+
+  if (dragConstraint) {
+    world.removeConstraint(dragConstraint);
+    dragConstraint = null;
+  }
+
+  if (draggedBody) {
+    const vel = draggedBody.velocity;
+
+    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+
+    if (speed > MAX_THROW_SPEED) {
+      const scale = MAX_THROW_SPEED / speed;
+
+      vel.x *= scale;
+      vel.y *= scale;
+      vel.z *= scale;
+    }
+  }
+
+  isDragging = false;
+  draggedBody = null;
+
+  renderer.domElement.releasePointerCapture?.(e.pointerId);
+});
+
 window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -771,6 +925,19 @@ function animate() {
 
   const fixedTimeStep = 1 / 60;
   const maxSubSteps = 8;
+
+  const MAX_GLOBAL_SPEED = 10;
+  physicsPairs.forEach((pair) => {
+    const vel = pair.body.velocity;
+    if (!vel) return;
+    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+    if (speed > MAX_GLOBAL_SPEED) {
+      const scale = MAX_GLOBAL_SPEED / speed;
+      vel.x *= scale;
+      vel.y *= scale;
+      vel.z *= scale;
+    }
+  });
 
   world.step(fixedTimeStep, clock.getDelta(), maxSubSteps);
 
