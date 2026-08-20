@@ -3,9 +3,8 @@ import * as CANNON from "cannon-es";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import gsap from "gsap";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+
+const FLOOR_POS = -1.6;
 
 const scene = new THREE.Scene();
 
@@ -16,7 +15,7 @@ const camera = new THREE.PerspectiveCamera(
   100,
 );
 camera.position.set(0, 1.5, 10);
-camera.rotation.set(0, 0, 0);
+camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(innerWidth, innerHeight);
@@ -37,7 +36,7 @@ const shadowFloor = new THREE.Mesh(
   new THREE.ShadowMaterial({ opacity: 0.15 }),
 );
 shadowFloor.rotation.x = -Math.PI / 2;
-shadowFloor.position.y = 0;
+shadowFloor.position.y = FLOOR_POS;
 shadowFloor.receiveShadow = true;
 scene.add(shadowFloor);
 
@@ -73,8 +72,6 @@ boxLight.castShadow = false;
 
 // background
 
-const FLOOR_POS = -1.6;
-
 function createStarTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -108,7 +105,7 @@ function createStarTexture() {
 
 const starTexture = createStarTexture();
 
-function createBackgroundStar() {
+function createBgStar() {
   const material = new THREE.SpriteMaterial({
     map: starTexture,
     transparent: true,
@@ -141,12 +138,15 @@ function showBackgroundStars() {
 }
 
 let backgroundStars = [];
+let backgroundStarsGroup = null;
+
 function createBackgroundStars() {
   const group = new THREE.Group();
+  backgroundStarsGroup = group;
   const count = 40;
 
   for (let i = 0; i < count; i++) {
-    const star = createBackgroundStar();
+    const star = createBgStar();
 
     const phi = i * 137.5 * (Math.PI / 180);
     const radius = Math.sqrt(i) * 2;
@@ -166,6 +166,24 @@ function createBackgroundStars() {
 
   scene.add(group);
 }
+
+const mouse = new THREE.Vector2();
+const parallax = {
+  x: 0,
+  y: 0,
+};
+
+const PARALLAX_STRENGTH = 0.025;
+
+window.addEventListener("pointermove", (e) => {
+  if (!backgroundStarsGroup) return;
+
+  const x = (e.clientX / innerWidth) * 2 - 1;
+  const y = (e.clientY / innerHeight) * 2 - 1;
+
+  parallax.x = x;
+  parallax.y = y;
+});
 
 // box loading
 
@@ -312,7 +330,6 @@ let isAnimating = false;
 let globalBoxBody = null;
 
 const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
 let isOpened = false;
 
 function getNDC(event) {
@@ -769,13 +786,14 @@ async function spawnModels() {
     const boxQuat = boxGroup.quaternion.clone();
     const offsetLocal = new THREE.Vector3(
       (index - 1) * 0.3,
-      (Math.random() - 0.5) * 0.2 + 0.1,
+      0.6 + (Math.random() - 0.5) * 0.2,
       (Math.random() - 0.5) * 0.2,
     );
 
-    const offsetX = (index - 1) * 0.3;
-    const offsetY = (Math.random() - 0.5) * 0.2 + 0.1;
-    body.position.set(offsetX, -0.3 + offsetY, (Math.random() - 0.5) * 0.2);
+    const spawnPos = boxPos
+      .clone()
+      .add(offsetLocal.clone().applyQuaternion(boxQuat));
+    body.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
 
     const jumpForceY = 6 + Math.random() * 3;
     const jumpForceX = (Math.random() - 0.5) * 5;
@@ -916,12 +934,22 @@ window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  updateWalls();
 });
 
 const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
+
+  if (backgroundStarsGroup) {
+    backgroundStarsGroup.rotation.y +=
+      (parallax.x * PARALLAX_STRENGTH - backgroundStarsGroup.rotation.y) * 0.04;
+
+    backgroundStarsGroup.rotation.x +=
+      (-parallax.y * PARALLAX_STRENGTH - backgroundStarsGroup.rotation.x) *
+      0.04;
+  }
 
   const fixedTimeStep = 1 / 60;
   const maxSubSteps = 8;
