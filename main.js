@@ -1,10 +1,8 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import gsap from "gsap";
-import GUI from "lil-gui";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -405,7 +403,7 @@ function openBox() {
         ease: "power2.out",
       });
 
-      toggleHint(true, "trow them around");
+      toggleHint(true, "throw them around");
 
       setTimeout(() => closeBox(), 1000);
     },
@@ -600,21 +598,21 @@ updateWalls();
 
 const ITEMS_CONFIG = [
   {
-    url: "./models/DaisyColor.glb",
+    url: "./models/Daisy.glb",
     shapeType: "box",
     scale: 1,
     mass: 1.0,
     collisionScale: 0.8,
   },
   {
-    url: "./models/Bone.glb",
+    url: "./models/Moon.glb",
     shapeType: "box",
-    scale: 1,
-    mass: 1.2,
+    scale: 0.8,
+    mass: 1,
     collisionScale: 0.8,
   },
   {
-    url: "./models/AppleColor.glb",
+    url: "./models/Apple.glb",
     shapeType: "sphere",
     scale: 1,
     mass: 0.8,
