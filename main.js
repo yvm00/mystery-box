@@ -810,6 +810,20 @@ async function spawnModels() {
   });
 }
 
+const customCursor = document.querySelector(".custom-cursor");
+
+let cursorX = 0;
+let cursorY = 0;
+let targetCursorX = 0;
+let targetCursorY = 0;
+
+if (customCursor) {
+  window.addEventListener("pointermove", (e) => {
+    targetCursorX = e.clientX;
+    targetCursorY = e.clientY;
+  });
+}
+
 window.addEventListener("pointerdown", (e) => {
   if (!isOpened || isAnimating) return;
 
@@ -841,6 +855,7 @@ window.addEventListener("pointerdown", (e) => {
   if (!draggedBody) return;
 
   isDragging = true;
+  customCursor?.classList.add("is-dragging");
 
   draggedBody.velocity.set(0, 0, 0);
   draggedBody.angularVelocity.set(0, 0, 0);
@@ -912,7 +927,6 @@ window.addEventListener("pointerup", (e) => {
 
   if (draggedBody) {
     const vel = draggedBody.velocity;
-
     const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
 
     if (speed > MAX_THROW_SPEED) {
@@ -926,6 +940,8 @@ window.addEventListener("pointerup", (e) => {
 
   isDragging = false;
   draggedBody = null;
+
+  customCursor?.classList.remove("is-dragging");
 
   renderer.domElement.releasePointerCapture?.(e.pointerId);
 });
@@ -949,6 +965,13 @@ function animate() {
     backgroundStarsGroup.rotation.x +=
       (-parallax.y * PARALLAX_STRENGTH - backgroundStarsGroup.rotation.x) *
       0.04;
+  }
+
+  if (customCursor) {
+    cursorX += (targetCursorX - cursorX) * 0.15;
+    cursorY += (targetCursorY - cursorY) * 0.15;
+
+    customCursor.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%, -50%)`;
   }
 
   const fixedTimeStep = 1 / 60;

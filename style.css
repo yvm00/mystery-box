@@ -154,3 +154,51 @@ canvas {
     opacity: 0;
   }
 }
+
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: 10px;
+  height: 10px;
+
+  border-radius: 50%;
+  background: #fff4d6;
+
+  box-shadow:
+    0 0 8px rgba(255, 220, 170, 0.8),
+    0 0 20px rgba(255, 150, 200, 0.45);
+
+  pointer-events: none;
+  z-index: 9999;
+
+  transform: translate(-50%, -50%);
+  opacity: 0.9;
+
+  transition:
+    width 0.2s ease,
+    height 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.custom-cursor.is-dragging {
+  width: 18px;
+  height: 18px;
+
+  box-shadow:
+    0 0 12px rgba(255, 220, 170, 0.9),
+    0 0 30px rgba(255, 150, 200, 0.6);
+}
+
+@media (pointer: fine) {
+  body {
+    cursor: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .custom-cursor {
+    display: none;
+  }
+}
