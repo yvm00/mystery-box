@@ -194,7 +194,7 @@ let boxContactsAdded = false;
 
 function loadBox() {
   return new Promise((resolve, reject) => {
-    loader.load("./models/BoxColor.glb", resolve, undefined, reject);
+    loader.load("/models/BoxColor.glb", resolve, undefined, reject);
   });
 }
 
@@ -615,35 +615,35 @@ updateWalls();
 
 const ITEMS_CONFIG = [
   {
-    url: "./models/Daisy.glb",
+    url: "/models/Daisy.glb",
     shapeType: "box",
     scale: 1,
     mass: 1.0,
     collisionScale: 0.8,
   },
   {
-    url: "./models/Moon.glb",
+    url: "/models/Moon.glb",
     shapeType: "box",
     scale: 0.8,
     mass: 1,
     collisionScale: 0.8,
   },
   {
-    url: "./models/Apple.glb",
+    url: "/models/Apple.glb",
     shapeType: "sphere",
     scale: 1,
     mass: 0.8,
     collisionScale: 0.7,
   },
   {
-    url: "./models/Cat.glb",
+    url: "/models/Cat.glb",
     shapeType: "sphere",
     scale: 1,
     mass: 1.0,
     collisionScale: 0.7,
   },
   {
-    url: "./models/Star.glb",
+    url: "/models/Star.glb",
     shapeType: "box",
     scale: 1,
     mass: 0.9,
